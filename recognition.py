@@ -31,6 +31,14 @@ left_shift, top_shift = 155.5, 658
 
 model = keras.models.load_model('deepl/tile_model')
 
+def int_to_tile(i):
+    if i >= 35:
+        i += 1
+    elif i < 4:
+        return ['nothing', '0m', '0p', '0s'][i]
+    kind = 'mpsz'
+    return str(i // 4) + kind[i % 4]
+
 while True:
     res = pyautogui.locateOnScreen('resources/locator.png', confidence=0.8)
     print(res)
@@ -38,16 +46,19 @@ while True:
     if res:
         left, top, width, height = res
         im = pyautogui.screenshot(region=res)
-        input_tiles = np.zeros((14, 66, 105, 3))
+        input_tiles = np.zeros((14, 105, 66, 3))
 
         for i in range(13):   
             now = datetime.now()
             x, y = left_shift+int(67.46153*i), top_shift
-            tile = im.copy().crop(box=(x, y, x+tile_width, y+tile_height)).resize((66, 105))
-            input_tiles[i] = np.swapaxes(np.asarray(tile), 0, 1)
+            tile = im.copy().crop(box=(x, y, x+tile_width, y+tile_height))
+            input_tiles[i] = np.asarray(tile)
         x, y = left_shift+int(67.46153*13)+20, top_shift
-        im.copy().crop(box=(x, y, x+tile_width, y+tile_height))
-        print(np.argmax(model.predict(input_tiles), axis=-1))
+        tile = im.copy().crop(box=(x, y, x+tile_width, y+tile_height))
+        input_tiles[13] = np.asarray(tile)
+        print(
+            [int_to_tile(i) for i in np.argmax(model.predict(input_tiles), axis=-1)]
+        )
         # pyautogui.screenshot(f'resources/hand_recog/{now.strftime("%m%d%Y%H%M")}_{14}.png', region=(left+left_shift+int(67.46153*13)+19, top+top_shift, tile_width, tile_height))
 
     time.sleep(3)
